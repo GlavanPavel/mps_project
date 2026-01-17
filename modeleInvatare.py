@@ -20,7 +20,8 @@ column_names = ['Age', 'Gender', 'Total_Bilirubin', 'Direct_Bilirubin',
 
 df = pd.read_csv(url, names=column_names, header=None)
 
-print(f"Dimensiunea inițiala a setului de date: {df.shape}")
+print(f"Dimensiunea initiala a setului de date: {df.shape}")
+
 
 
 print("\n--- Valori lipsa pe coloane ---")
@@ -55,13 +56,13 @@ print(stats)
 
 plt.figure(figsize=(10, 8))
 sns.heatmap(df.corr(), annot=True, cmap='coolwarm', fmt=".2f")
-plt.title("Matricea de Corelație a Caracteristicilor")
+plt.title("Matricea de Corelatie a Caracteristicilor")
 plt.show()
 
 # Vizualizare distributiei target (sanatos/boala)
 plt.figure(figsize=(6, 4))
 ax = sns.countplot(x='Dataset', data=df)
-plt.title("Distribuția Claselor (0=Sanatos, 1=Boala) cu numar fix")
+plt.title("Distributia Claselor (0=Sanatos, 1=Boala) cu numar fix")
 
 for p in ax.patches:
     ax.text(p.get_x() + p.get_width() / 2.,
@@ -81,18 +82,18 @@ test_sizes = [0.20, 0.30, 0.40, 0.50]
 svm_model = SVC(kernel='rbf', random_state=42)
 mlp_model = MLPClassifier(hidden_layer_sizes=(50, 25), max_iter=500, random_state=42)
 
-# Scalare (Esentiala pentru SVM și MLP)
+# Scalare (Esentiala pentru SVM si MLP)
 scaler = StandardScaler()
 
 results = []
 
-print("\n--- Analiza Comparativă SVM vs MLP pe diverse partiții ---")
+print("\n--- Analiza Comparativa SVM vs MLP pe diverse partitii ---")
 
 for size in test_sizes:
     # Partitionare
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=size, random_state=42, stratify=Y)
 
-    # Verificare distribuție
+    # Verificare distributie
     dist_train = y_train.value_counts(normalize=True).iloc[0] # normalizam datele si dupa luam informatia din clasa majoritara
     dist_test = y_test.value_counts(normalize=True).iloc[0]
 
