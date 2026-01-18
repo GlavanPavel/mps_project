@@ -1,0 +1,19 @@
+services:
+  mariadb-db:
+    image: mariadb:latest
+    container_name: liver-disease-container
+    restart: always
+    environment:
+      - MARIADB_ROOT_PASSWORD=root_pass
+      - MARIADB_DATABASE=liver_disease
+      - MARIADB_USER=user
+      - MARIADB_PASSWORD=user
+    ports:
+      - "3309:3306" 
+    volumes:
+      - ./db_init:/docker-entrypoint-initdb.d:Z
+      - liver_disease_data:/var/lib/mysql
+
+# volum virtual pt docker
+volumes:
+  liver_disease_data:
