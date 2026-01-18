@@ -6,3 +6,4 @@ pandas==2.3.3
 python_bcrypt==0.3.2
 scikit_learn==1.8.0
 seaborn==0.13.2
+pytest
