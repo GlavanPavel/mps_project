@@ -1,5 +1,6 @@
 import pandas as pd
 import mysql.connector
+import bcrypt  # Import necesar pentru hashing
 
 def run_complete_seeder():
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00225/Indian%20Liver%20Patient%20Dataset%20(ILPD).csv"
@@ -23,15 +24,25 @@ def run_complete_seeder():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
 
-        parola_admin = 'admin'
-        parola_medic = 'medic'
-        utilizatori = [
-            ('medic', parola_medic, 'MEDIC'),
-            ('admin', parola_admin, 'ADMIN')
+        # --- LOGICA NOUA PENTRU HASHING ---
+        utilizatori_raw = [
+            ('medic', 'medic', 'MEDIC'),
+            ('admin', 'admin', 'ADMIN')
         ]
-
-        cursor.executemany("INSERT IGNORE INTO USERS (username, password_hash, role) VALUES (%s, %s, %s)", utilizatori)
         
+        utilizatori_pentru_db = []
+        for username, parola_clara, rol in utilizatori_raw:
+            # Generam hash-ul pentru fiecare parola
+            salt = bcrypt.gensalt()
+            hashed_parola = bcrypt.hashpw(parola_clara.encode('utf-8'), salt)
+            # Salvam varianta decodata (string) pentru SQL
+            utilizatori_pentru_db.append((username, hashed_parola.decode('utf-8'), rol))
+
+        # Inseram utilizatorii cu parolele hash-uite
+        cursor.executemany("INSERT IGNORE INTO USERS (username, password_hash, role) VALUES (%s, %s, %s)", 
+                           utilizatori_pentru_db)
+        
+        # --- RESTUL SCRIPTULUI RAMANE NESCHIMBAT ---
         cursor.execute("SELECT id FROM USERS WHERE username = 'medic'")
         medic_id = cursor.fetchone()[0]
 
@@ -66,7 +77,7 @@ def run_complete_seeder():
                 ))
 
         conn.commit()
-        print("Seeding finalizat cu succes. Utilizatori: medic, admin. Date ILPD incarcate.")
+        print("Seeding finalizat cu succes. Parolele au fost hash-uite cu bcrypt.")
 
     except Exception as e:
         print(f"Eroare: {e}")
