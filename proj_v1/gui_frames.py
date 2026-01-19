@@ -8,7 +8,7 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
-from utils import validate_patient_data
+from utils import validate_patient_data, calculate_age_from_dob
 
 # Setari aspect general
 ctk.set_appearance_mode("System")  # "Dark" sau "Light"
@@ -136,7 +136,7 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
         self.gen.pack(pady=5)
 
         # Date Clinice
-        self.fields = ["Varsta", "Bilirubina T", "Bilirubina D", "Fosfataza", "ALT", "AST", "Proteine T", "Albumina", "Raport AG"]
+        self.fields = ["Bilirubina T", "Bilirubina D", "Fosfataza", "ALT", "AST", "Proteine T", "Albumina", "Raport AG"]
         self.c_ents = {f: ctk.CTkEntry(form_container, placeholder_text=f, width=250) for f in self.fields}
         for f in self.fields: self.c_ents[f].pack(pady=2)
 
@@ -152,8 +152,17 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
 
     def run(self):
         try:
-            # 1. Colectare date brute din interfata
-            raw_age = self.c_ents["Varsta"].get()
+            # 1. Calcul automat Varsta din Data Nasterii
+            dob_str = self.p_ents["Data"].get()
+            calculated_age = calculate_age_from_dob(dob_str)
+            
+            if calculated_age is None:
+                messagebox.showerror("Eroare Validare", "Formatul datei de naștere este invalid (trebuie YYYY-MM-DD)!")
+                return
+
+            raw_age = str(calculated_age) # Convertim la string pentru validare uniforma
+
+            # 2. Colectare restul datelor din interfata
             raw_gen = self.gen.get()
             raw_tb = self.c_ents["Bilirubina T"].get()
             raw_db = self.c_ents["Bilirubina D"].get()
@@ -164,7 +173,7 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
             raw_alb = self.c_ents["Albumina"].get()
             raw_ag = self.c_ents["Raport AG"].get()
 
-            # 2. Validare date folosind modulul utils
+            # 3. Validare date folosind modulul utils
             is_valid, message = validate_patient_data(
                 raw_age, raw_gen, raw_tb, raw_db, raw_alk,
                 raw_alt, raw_ast, raw_tp, raw_alb, raw_ag
@@ -174,7 +183,7 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
                 messagebox.showerror("Eroare Validare", message)
                 return
 
-            # 3. Procesare daca datele sunt valide
+            # 4. Procesare daca datele sunt valide
             split_map = {"80% Train": 0.20, "70% Train": 0.30, "60% Train": 0.40, "50% Train": 0.50}
             sz = split_map[self.split.get()]
 
@@ -196,7 +205,7 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
             )
             self.controller.show_frame("PredictionFrame")
         except Exception as e:
-            messagebox.showerror("Eroare Date", "Asigura-te ca toate campurile sunt completate cu cifre!")
+            messagebox.showerror("Eroare Date", f"A aparut o eroare: {str(e)}")
 
     def save_to_db(self, cl, r, pb):
         conn = mysql.connector.connect(**self.controller.db_config); cursor = conn.cursor()

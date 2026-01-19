@@ -1,3 +1,19 @@
+from datetime import datetime
+
+def calculate_age_from_dob(dob_str):
+    """
+    Calculeaza varsta pe baza datei de nastere (format YYYY-MM-DD).
+    Returneaza: int (varsta) sau None daca formatul e gresit.
+    """
+    try:
+        dob = datetime.strptime(dob_str, "%Y-%m-%d")
+        today = datetime.today()
+        # Calcul varsta scazand anul si ajustand daca nu a trecut ziua de nastere anul acesta
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return age
+    except ValueError:
+        return None
+
 def validate_patient_data(age, gender, total_bilirubin, direct_bilirubin, 
                           alkaline_phosphotase, alamine_aminotransferase, 
                           aspartate_aminotransferase, total_proteins, 
