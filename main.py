@@ -7,7 +7,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Sistem de Suport Decizional - Boală Hepatică")
-        self.geometry("900x600")
+        self.geometry("1000x600")
 
         # Container pentru "ecrane"
         container = ttk.Frame(self)
