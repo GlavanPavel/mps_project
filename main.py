@@ -1,21 +1,49 @@
+##########################################################################
+#                                                                        #
+#  Copyright:   (c) 2026, Proiect MPS                                    #
+#  Autori:      Albu A. Sorin (R.Moldova) 1409A                          #
+#               Glavan P. Pavel (R.Moldova) 1409A                        #
+#               Duda I.I. Andrei-Ionuț 1409A                             #
+#               Jireadă C. Teodor 1409A                                  #
+#               Popovici I.L. Andrei 1409A                               #
+#               Noroc D. Sorin (R.Moldova) 1409A                         #
+#               Timofte C. Constantin 1409A                              #
+#               Matei I. Ion (R.Moldova) 1410B                           #
+#                                                                        #
+#  Descriere:   Sistem Expert pentru Predictia Bolilor Hepatice          #
+#               Utilizand algoritmii SVM si Multilayer Perceptron (MLP)  #
+#               Bazat pe setul de date ILPD (Indian Liver Patient)       #
+#                                                                        #
+#  Acest cod si informatiile sunt oferite "ca atare" fara nicio garantie #
+#  de orice fel, exprimata sau implicita. Acest proiect este realizat    #
+#  in scop didactic pentru disciplina Managementul Proiectelor Software. #
+#                                                                        #
+##########################################################################
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 
 
 class App(tk.Tk):
+    """
+    Clasa principala a aplicatiei care mosteneste tk.Tk. Aceasta 
+    gestioneaza containerul principal de ferestre si navigarea intre diferitele 
+    ecrane ale sistemului expert.
+    """
     def __init__(self):
         super().__init__()
         self.title("Sistem de Suport Decizional - Boală Hepatică")
         self.geometry("1000x600")
 
-        # Container pentru "ecrane"
         container = ttk.Frame(self)
         container.pack(fill="both", expand=True)
 
         self.frames = {}
 
-        # --- AICI am adăugat StatisticsFrame în listă ---
+        """
+        Initializarea si stocarea tuturor ferestrelor disponibile in 
+        aplicatie pentru a permite comutarea rapida fara recrearea obiectelor.
+        """
         for F in (LoginFrame, DashboardFrame, PatientFormFrame,
                   PredictionFrame, StatisticsFrame, AdminFrame):
             frame = F(parent=container, controller=self)
@@ -29,12 +57,18 @@ class App(tk.Tk):
         frame.tkraise()
 
     def set_prediction_result(self, label_text, probability, model_name, risk_level):
-        """Actualizează ecranul de predicție cu valori mock."""
+        """
+        Transfera datele rezultatului predictiei catre fereastra de 
+        afisare pentru a fi vizualizate de utilizator.
+        """
         frame: PredictionFrame = self.frames["PredictionFrame"]
         frame.set_result(label_text, probability, model_name, risk_level)
 
 
 class LoginFrame(ttk.Frame):
+    """
+    Fereastra de autentificare care restrictioneaza accesul in aplicatie.
+    """
     def __init__(self, parent, controller: App):
         super().__init__(parent)
         self.controller = controller
@@ -62,7 +96,9 @@ class LoginFrame(ttk.Frame):
         ttk.Label(self, text="Rol: MEDIC / ADMINISTRATOR (mock)").pack()
 
     def login(self):
-        # Logică mock – orice user/parolă este acceptat
+        """
+        Validarea simplificata a intrarilor si tranzitia catre Dashboard in cazul succesului.
+        """
         if not self.username_entry.get():
             messagebox.showwarning("Atenție", "Introduceți numele de utilizator.")
             return
@@ -70,6 +106,10 @@ class LoginFrame(ttk.Frame):
 
 
 class DashboardFrame(ttk.Frame):
+    """
+    Panoul principal de control care ofera acces la functionalitatile cheie: 
+    introducere date, statistici si administrare.
+    """
     def __init__(self, parent, controller: App):
         super().__init__(parent)
         self.controller = controller
@@ -100,7 +140,6 @@ class DashboardFrame(ttk.Frame):
         ttk.Button(left, text="Predicție curentă",
                    command=lambda: controller.show_frame("PredictionFrame")).pack(fill="x", pady=5)
 
-        # --- NOU: buton pentru ecranul de Analiză Statistică ---
         ttk.Button(left, text="Analiză statistică și comparații ML",
                    command=lambda: controller.show_frame("StatisticsFrame")).pack(fill="x", pady=5)
 
@@ -110,7 +149,6 @@ class DashboardFrame(ttk.Frame):
         ttk.Button(left, text="Ieșire",
                    command=self.quit_app).pack(fill="x", pady=5)
 
-        # Zonă de "statistici" mock
         ttk.Label(right, text="Statistici și rezumat (mock)",
                   font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=10)
 
@@ -130,6 +168,9 @@ class DashboardFrame(ttk.Frame):
 
 
 class PatientFormFrame(ttk.Frame):
+    """
+    Formular pentru colectarea datelor clinice ale pacientului necesare pentru realizarea predictiei.
+    """
     def __init__(self, parent, controller: App):
         super().__init__(parent)
         self.controller = controller
@@ -146,7 +187,9 @@ class PatientFormFrame(ttk.Frame):
         form = ttk.Frame(self)
         form.pack(pady=20)
 
-        # câmpuri ILPD
+        """
+        Definirea etichetelor corespunzatoare coloanelor din setul de date ILPD pentru interfata grafica.
+        """
         labels = [
             "Vârstă",
             "Gen",
@@ -191,7 +234,9 @@ class PatientFormFrame(ttk.Frame):
                 widget.delete(0, tk.END)
 
     def calc_mock(self):
-        # Nu facem ML real, doar trimitem date mock către ecranul de predicție
+        """
+        Simularea procesului de predictie si trimiterea datelor catre fereastra de rezultate.
+        """
         self.controller.set_prediction_result(
             label_text="Risc hepatic crescut",
             probability="0.82",
@@ -202,6 +247,10 @@ class PatientFormFrame(ttk.Frame):
 
 
 class PredictionFrame(ttk.Frame):
+    """
+    Fereastra pentru afisarea rezultatului predictiei, 
+    a probabilitatii asociate si a nivelului de risc vizual.
+    """
     def __init__(self, parent, controller: App):
         super().__init__(parent)
         self.controller = controller
@@ -231,7 +280,6 @@ class PredictionFrame(ttk.Frame):
         self.label_model = ttk.Label(content, text="-")
         self.label_model.grid(row=2, column=1, sticky="w", pady=5, padx=5)
 
-        # Indicator vizual de risc (culoare)
         indicator_frame = ttk.Frame(self)
         indicator_frame.pack(pady=20)
 
@@ -261,8 +309,11 @@ class PredictionFrame(ttk.Frame):
             self.risk_indicator.config(text="NEUTRU", bg="grey")
 
 
-# --- NOU: Ecran de Analiză Statistică și Comparații ML ---
 class StatisticsFrame(ttk.Frame):
+    """
+    Fereastra dedicata vizualizarii grafice a performantei 
+    modelelor si a importantei atributelor folosind widget-ul Canvas.
+    """
     def __init__(self, parent, controller: App):
         super().__init__(parent)
         self.controller = controller
@@ -279,7 +330,6 @@ class StatisticsFrame(ttk.Frame):
         body = ttk.Frame(self)
         body.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Stânga: valori numerice / metrici
         left = ttk.Frame(body)
         left.pack(side="left", fill="y", padx=10)
 
@@ -306,34 +356,30 @@ class StatisticsFrame(ttk.Frame):
         ttk.Label(left, text="Concluzie (mock):\nMLP depășește ușor SVM\nla toate metricile.",
                   justify="left").pack(anchor="w", pady=10)
 
-        # Dreapta: "grafice" desenate simplu pe Canvas
         right = ttk.Frame(body)
         right.pack(side="left", fill="both", expand=True, padx=10)
 
-        # Canvas 1: comparație acuratețe SVM vs MLP
         ttk.Label(right, text="Comparație acuratețe SVM vs MLP",
                   font=("Segoe UI", 11, "bold")).pack(anchor="w")
 
         canvas_acc = tk.Canvas(right, width=450, height=180, bg="white", highlightthickness=1, highlightbackground="gray")
         canvas_acc.pack(pady=5, fill="x")
 
-        # Axă simplă
         canvas_acc.create_line(50, 150, 400, 150)   # axa X
         canvas_acc.create_line(50, 150, 50, 40)     # axa Y
 
-        # Bare (valori mock)
-        # SVM accuracy 0.86
+        """
+        Desenarea grafica a barelor de comparatie pentru acuratete direct pe canvas.
+        """
         canvas_acc.create_rectangle(100, 150 - 0.86 * 100, 160, 150, fill="#4a90e2")
         canvas_acc.create_text(130, 150 - 0.86 * 100 - 10, text="0.86")
 
-        # MLP accuracy 0.88
         canvas_acc.create_rectangle(220, 150 - 0.88 * 100, 280, 150, fill="#50e3c2")
         canvas_acc.create_text(250, 150 - 0.88 * 100 - 10, text="0.88")
 
         canvas_acc.create_text(130, 160, text="SVM")
         canvas_acc.create_text(250, 160, text="MLP")
 
-        # Canvas 2: "importanța trăsăturilor"
         ttk.Label(right, text="Importanța trăsăturilor (mock)",
                   font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(10, 0))
 
@@ -358,6 +404,9 @@ class StatisticsFrame(ttk.Frame):
 
 
 class AdminFrame(ttk.Frame):
+    """
+    Panou de administrare pentru gestionarea utilizatorilor si vizualizarea log-urilor de predictie.
+    """
     def __init__(self, parent, controller: App):
         super().__init__(parent)
         self.controller = controller

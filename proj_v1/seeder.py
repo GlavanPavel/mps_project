@@ -1,14 +1,43 @@
+##########################################################################
+#                                                                        #
+#  Copyright:   (c) 2026, Proiect MPS                                    #
+#  Autori:      Albu A. Sorin (R.Moldova) 1409A                          #
+#               Glavan P. Pavel (R.Moldova) 1409A                        #
+#               Duda I.I. Andrei-Ionuț 1409A                             #
+#               Jireadă C. Teodor 1409A                                  #
+#               Popovici I.L. Andrei 1409A                               #
+#               Noroc D. Sorin (R.Moldova) 1409A                         #
+#               Timofte C. Constantin 1409A                              #
+#               Matei I. Ion (R.Moldova) 1410B                           #
+#                                                                        #
+#  Descriere:   Sistem Expert pentru Predictia Bolilor Hepatice          #
+#               Utilizand algoritmii SVM si Multilayer Perceptron (MLP)  #
+#               Bazat pe setul de date ILPD (Indian Liver Patient)       #
+#                                                                        #
+#  Acest cod si informatiile sunt oferite "ca atare" fara nicio garantie #
+#  de orice fel, exprimata sau implicita. Acest proiect este realizat    #
+#  in scop didactic pentru disciplina Managementul Proiectelor Software. #
+#                                                                        #
+##########################################################################
 import pandas as pd
 import mysql.connector
 import bcrypt
 
 def run_complete_seeder():
+    """
+    Executa popularea initiala a bazei de date cu utilizatori
+      default si date istorice preluate din setul de date ILPD
+    """
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00225/Indian%20Liver%20Patient%20Dataset%20(ILPD).csv"
     column_names = ['Age', 'Gender', 'Total_Bilirubin', 'Direct_Bilirubin',
                     'Alkaline_Phosphotase', 'Alamine_Aminotransferase',
                     'Aspartate_Aminotransferase', 'Total_Proteins',
                     'Albumin', 'Albumin_and_Globulin_Ratio', 'Dataset']
 
+    """
+    Descarca setul de date ILPD de la sursa externa si 
+    elimina intrarile incomplete pentru a asigura calitatea datelor importate
+    """
     df = pd.read_csv(url, names=column_names, header=None)
     df = df.dropna()
 
@@ -24,7 +53,10 @@ def run_complete_seeder():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
 
-        # --- LOGICA NOUA PENTRU HASHING ---
+        """
+        Defineste utilizatorii impliciti medic sau admin,
+        genereaza hashuri securizate pentru parole folosind bcrypt inainte de inserarea in baza de date
+        """
         utilizatori_raw = [
             ('medic', 'medic', 'MEDIC'),
             ('admin', 'admin', 'ADMIN')
@@ -32,17 +64,17 @@ def run_complete_seeder():
         
         utilizatori_pentru_db = []
         for username, parola_clara, rol in utilizatori_raw:
-            # Generam hash-ul pentru fiecare parola
             salt = bcrypt.gensalt()
             hashed_parola = bcrypt.hashpw(parola_clara.encode('utf-8'), salt)
-            # Salvam varianta decodata (string) pentru SQL
             utilizatori_pentru_db.append((username, hashed_parola.decode('utf-8'), rol))
 
-        # Inseram utilizatorii cu parolele hash-uite
         cursor.executemany("INSERT IGNORE INTO USERS (username, password_hash, role) VALUES (%s, %s, %s)", 
                            utilizatori_pentru_db)
         
-        # --- RESTUL SCRIPTULUI RAMANE NESCHIMBAT ---
+        """
+        Itereaza prin setul de date pentru a crea pacienti 
+        si asociaza datele medicale existente sub forma de predictii istorice validate de sistem
+        """
         cursor.execute("SELECT id FROM USERS WHERE username = 'medic'")
         medic_id = cursor.fetchone()[0]
 
@@ -82,6 +114,9 @@ def run_complete_seeder():
     except Exception as e:
         print(f"Eroare: {e}")
     finally:
+        """
+        Inchide conexiunea la baza de date si elibereaza resursele utilizate
+        """
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()

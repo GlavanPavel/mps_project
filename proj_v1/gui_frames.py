@@ -1,7 +1,28 @@
+##########################################################################
+#                                                                        #
+#  Copyright:   (c) 2026, Proiect MPS                                    #
+#  Autori:      Albu A. Sorin (R.Moldova) 1409A                          #
+#               Glavan P. Pavel (R.Moldova) 1409A                        #
+#               Duda I.I. Andrei-Ionuț 1409A                             #
+#               Jireadă C. Teodor 1409A                                  #
+#               Popovici I.L. Andrei 1409A                               #
+#               Noroc D. Sorin (R.Moldova) 1409A                         #
+#               Timofte C. Constantin 1409A                              #
+#               Matei I. Ion (R.Moldova) 1410B                           #
+#                                                                        #
+#  Descriere:   Sistem Expert pentru Predictia Bolilor Hepatice          #
+#               Utilizand algoritmii SVM si Multilayer Perceptron (MLP)  #
+#               Bazat pe setul de date ILPD (Indian Liver Patient)       #
+#                                                                        #
+#  Acest cod si informatiile sunt oferite "ca atare" fara nicio garantie #
+#  de orice fel, exprimata sau implicita. Acest proiect este realizat    #
+#  in scop didactic pentru disciplina Managementul Proiectelor Software. #
+#                                                                        #
+##########################################################################
 import bcrypt
 import tkinter as tk
 from tkinter import ttk, messagebox
-import customtkinter as ctk # Importam biblioteca noua
+import customtkinter as ctk 
 import mysql.connector
 import subprocess
 import os
@@ -10,11 +31,14 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 from utils import validate_patient_data, calculate_age_from_dob
 
-# Setari aspect general
-ctk.set_appearance_mode("System")  # "Dark" sau "Light"
+# Setari pentru aspectul vizual al interfetei grafice
+ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
 class LoginFrame(ctk.CTkFrame):
+    """
+    Gestioneaza interfata de autentificare si validarea credentialelor utilizatorilor
+    """
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -35,10 +59,14 @@ class LoginFrame(ctk.CTkFrame):
         ctk.CTkButton(self, text="Login", command=self.login).pack(pady=30)
 
     def login(self):
-        # Logica ramane identica
+        """
+        Verifica utilizatorul si parola in baza de date si initiaza sesiunea
+        Returneaza: None, dar schimba frame-ul curent daca autentificarea reuseste
+        """
         user_input = self.u.get()
         pass_input = self.p.get()
         try:
+            # Se conecteaza la baza de date si cauta hash-ul parolei
             conn = mysql.connector.connect(**self.controller.db_config)
             cursor = conn.cursor()
             cursor.execute("SELECT id, password_hash, role FROM USERS WHERE username=%s", (user_input,))
@@ -56,6 +84,9 @@ class LoginFrame(ctk.CTkFrame):
         except Exception as e: messagebox.showerror("Eroare DB", str(e))
 
 class DashboardFrame(ctk.CTkFrame):
+    """
+    Ecranul principal de navigare care ofera acces la functionalitatile aplicatiei in functie de rol
+    """
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -74,17 +105,27 @@ class DashboardFrame(ctk.CTkFrame):
         ctk.CTkButton(self, text="Delogare", fg_color="gray", command=lambda: controller.show_frame("LoginFrame"), **btn_style).pack(pady=30)
 
     def refresh(self):
+        """
+        Actualizeaza interfata pentru a afisa butonul de admin doar daca utilizatorul are drepturi
+        """
         if self.controller.logged_user_role == 'ADMIN': self.admin_btn.pack(pady=10)
         else: self.admin_btn.pack_forget()
 
     def run_learning_models(self):
+        """
+        Lanseaza scriptul extern pentru vizualizarea graficelor de invatare
+        """
         try:
+            # Executa scriptul modeleInvatare.py intr-un proces separat
             script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modeleInvatare.py")
             if os.path.exists(script_path): subprocess.Popen(["python", script_path])
             else: messagebox.showerror("Eroare", "Fisierul nu a fost gasit!")
         except Exception as e: messagebox.showerror("Eroare", str(e))
 
 class AdminUserFrame(ctk.CTkFrame):
+    """
+    Interfata dedicata administratorilor pentru crearea conturilor noi de medici
+    """
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -102,8 +143,12 @@ class AdminUserFrame(ctk.CTkFrame):
         ctk.CTkButton(self, text="Inapoi", fg_color="transparent", border_width=2, command=lambda: controller.show_frame("DashboardFrame")).pack()
 
     def create_user(self):
+        """
+        Preia datele din formular si introduce un nou medic in baza de date cu parola criptata
+        """
         u, p = self.new_u.get(), self.new_p.get()
         if not u or not p: return
+        # Genereaza un hash securizat pentru parola inainte de stocare
         hashed_p = bcrypt.hashpw(p.encode('utf-8'), bcrypt.gensalt())
         try:
             conn = mysql.connector.connect(**self.controller.db_config)
@@ -113,7 +158,10 @@ class AdminUserFrame(ctk.CTkFrame):
             messagebox.showinfo("Succes", f"Medicul {u} adaugat!")
         except Exception as e: messagebox.showerror("Eroare DB", str(e))
 
-class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pentru stabilitate
+class PatientFormFrame(ctk.CTkFrame): 
+    """
+    Formular complex pentru colectarea datelor clinice si rularea predictiei
+    """
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -151,8 +199,12 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
         ctk.CTkButton(self, text="Inapoi la Meniu", fg_color="gray", command=lambda: controller.show_frame("DashboardFrame")).pack(pady=5)
 
     def run(self):
+        """
+        Orchestreaza fluxul de predictie validare date preprocesare si interogare model ML
+        Returneaza: None, actualizeaza GUI cu rezultatul
+        """
         try:
-            # 1. Calcul automat Varsta din Data Nasterii
+            # Calculeaza varsta pe baza datei nasterii pentru a fi folosita in algoritm
             dob_str = self.p_ents["Data"].get()
             calculated_age = calculate_age_from_dob(dob_str)
             
@@ -160,9 +212,9 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
                 messagebox.showerror("Eroare Validare", "Formatul datei de naștere este invalid (trebuie YYYY-MM-DD)!")
                 return
 
-            raw_age = str(calculated_age) # Convertim la string pentru validare uniforma
+            raw_age = str(calculated_age) 
 
-            # 2. Colectare restul datelor din interfata
+            # Colectare restul datelor din interfata
             raw_gen = self.gen.get()
             raw_tb = self.c_ents["Bilirubina T"].get()
             raw_db = self.c_ents["Bilirubina D"].get()
@@ -173,7 +225,7 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
             raw_alb = self.c_ents["Albumina"].get()
             raw_ag = self.c_ents["Raport AG"].get()
 
-            # 3. Validare date folosind modulul utils
+            # Valideaza datele pacientului inainte de a le trimite la modelul ML
             is_valid, message = validate_patient_data(
                 raw_age, raw_gen, raw_tb, raw_db, raw_alk,
                 raw_alt, raw_ast, raw_tp, raw_alb, raw_ag
@@ -183,15 +235,15 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
                 messagebox.showerror("Eroare Validare", message)
                 return
 
-            # 4. Procesare daca datele sunt valide
+            # Procesare daca datele sunt valide
             split_map = {"80% Train": 0.20, "70% Train": 0.30, "60% Train": 0.40, "50% Train": 0.50}
             sz = split_map[self.split.get()]
 
             clin_data = [float(raw_age), 1 if raw_gen == "Masculin" else 0]
-            # Adaugam restul campurilor deja validate ca float
             for val in [raw_tb, raw_db, raw_alk, raw_alt, raw_ast, raw_tp, raw_alb, raw_ag]:
                 clin_data.append(float(val))
 
+            # Normalizeaza datele folosind scalerul antrenat si obtine predictia
             dp = self.controller.models_data[sz]
             sc = dp['SCALER'].transform(np.array(clin_data).reshape(1, -1))
             res = dp[self.algo.get()].predict(sc)[0]
@@ -208,6 +260,9 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
             messagebox.showerror("Eroare Date", f"A aparut o eroare: {str(e)}")
 
     def save_to_db(self, cl, r, pb):
+        """
+        Salveaza datele pacientului si rezultatul predictiei in baza de date MySQL
+        """
         conn = mysql.connector.connect(**self.controller.db_config); cursor = conn.cursor()
         cnp = self.p_ents["CNP"].get()
         cursor.execute("INSERT IGNORE INTO PATIENTS (cnp_internal_id, full_name, gender, birth_date) VALUES (%s,%s,%s,%s)",
@@ -219,6 +274,9 @@ class PatientFormFrame(ctk.CTkFrame): # Am pus CTkFrame in loc de Scrollable pen
         conn.commit(); conn.close()
 
 class PredictionFrame(ctk.CTkFrame):
+    """
+    Afiseaza rezultatul clasificarii riscului si probabilitatea asociata
+    """
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.res_lbl = ctk.CTkLabel(self, text="-", font=("Arial", 28, "bold"))
@@ -233,17 +291,23 @@ class PredictionFrame(ctk.CTkFrame):
         ctk.CTkButton(self, text="Adauga alt Pacient", fg_color="transparent", border_width=2, command=lambda: controller.show_frame("PatientFormFrame")).pack()
 
     def set_result(self, txt, pb, mdl, risk):
+        """
+        Actualizeaza elementele vizuale cu datele obtinute in urma predictiei
+        """
         self.res_lbl.configure(text=f"{txt}\n({mdl})")
         self.prb_lbl.configure(text=f"Probabilitate: {pb*100:.2f}%")
-        color = "#e74c3c" if risk=="high" else "#2ecc71" # Rosu vs Verde modern
+        color = "#e74c3c" if risk=="high" else "#2ecc71" 
         self.box.configure(text=risk.upper(), fg_color=color)
 
 class HistoryFrame(ctk.CTkFrame):
+    """
+    Vizualizeaza istoricul predictiilor efectuate sub forma tabelara
+    """
     def __init__(self, parent, controller):
         super().__init__(parent); self.controller = controller
         ctk.CTkLabel(self, text="Istoric Predictii", font=("Arial", 20)).pack(pady=10)
 
-        # Treeview ramane din tkinter normal (ctk nu are tabel), dar il punem intr-un frame ctk
+        # Treeview ramane din tkinter normal, dar il punem intrun frame ctk
         columns = ("nume", "cnp", "rezultat", "conf")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         for col in columns: self.tree.heading(col, text=col.upper())
@@ -252,6 +316,9 @@ class HistoryFrame(ctk.CTkFrame):
         ctk.CTkButton(self, text="Inapoi la Meniu", command=lambda: controller.show_frame("DashboardFrame")).pack(pady=10)
 
     def refresh(self):
+        """
+        Incarca ultimele inregistrari din baza de date in tabelul Treeview
+        """
         for i in self.tree.get_children(): self.tree.delete(i)
         conn = mysql.connector.connect(**self.controller.db_config); cursor = conn.cursor()
         cursor.execute("SELECT p.full_name, p.cnp_internal_id, pr.prediction_result, pr.confidence_score FROM PATIENTS p JOIN PREDICTIONS pr ON p.id = pr.patient_id ORDER BY pr.id DESC")
@@ -259,6 +326,9 @@ class HistoryFrame(ctk.CTkFrame):
         conn.close()
 
 class StatisticsFrame(ctk.CTkFrame):
+    """
+    Genereaza rapoarte statistice despre setul de date si performanta modelelor
+    """
     def __init__(self, parent, controller):
         super().__init__(parent); self.controller = controller
         ctk.CTkLabel(self, text="Statistici si Performanta", font=("Arial", 20)).pack(pady=10)
@@ -272,25 +342,29 @@ class StatisticsFrame(ctk.CTkFrame):
         ctk.CTkButton(btn_f, text="Inapoi", fg_color="gray", command=lambda: controller.show_frame("DashboardFrame")).pack(side="left", padx=10)
 
     def show_stats(self):
-
+        """
+        Descarca setul de date calculeaza statistici descriptive si evalueaza acuratetea modelelor
+        """
         try:
             url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00225/Indian%20Liver%20Patient%20Dataset%20(ILPD).csv"
             cols = ['Age', 'Gender', 'TB', 'DB', 'Alk', 'Sgpt', 'Sgot', 'TP', 'ALB', 'AG', 'Dataset']
             df = pd.read_csv(url, names=cols, header=None).dropna()
+            # Transforma etichetele text in valori numerice pentru analiza
             df['Gender'] = df['Gender'].map({'Female': 0, 'Male': 1})
             df['Dataset'] = df['Dataset'].map({1: 1, 2: 0})
             X_all = df.drop('Dataset', axis=1); Y_all = df['Dataset']
             
-            # --- Sectiunea A: Statistici Descriptive ---
+            #Sectiunea A: Statistici Descriptive
+            # Calculeaza media varianta minimul si maximul pentru fiecare atribut
             desc = X_all.describe().T[['mean', 'std', 'min', 'max']]
             desc['variance'] = desc['std'] ** 2
-            report = "=== A. STATISTICI DESCRIPTIVE ===\n"
+            report = "A. STATISTICI DESCRIPTIVE\n"
             report += f"{'Atribut':<15} | {'Media':<8} | {'Var':<8} | {'Min':<6} | {'Max':<6}\n" + "-"*55 + "\n"
             for idx, row in desc.iterrows():
                 report += f"{idx:<15} | {row['mean']:.2f} | {row['variance']:.2f} | {row['min']:.1f} | {row['max']:.1f}\n"
 
-            # --- Sectiunea B: Performanta ---
-            report += "\n=== B. PERFORMANTA MODELE ===\n"
+            #Sectiunea B: Performanta
+            report += "\nB. PERFORMANTA MODELE\n"
             report += f"{'SPLIT':<10} | {'MDL':<5} | {'ACC':<7} | {'F1':<7}\n" + "-"*40 + "\n"
             for sz in self.controller.test_sizes:
                 data = self.controller.models_data[sz]
