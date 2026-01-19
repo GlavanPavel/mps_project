@@ -9,6 +9,7 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from utils import validate_patient_data
 
 class LoginFrame(ttk.Frame):
     def __init__(self, parent, controller):
@@ -169,10 +170,37 @@ class PatientFormFrame(ttk.Frame):
 
     def run(self):
         try:
+            # 1. Colectare date brute din interfata
+            raw_age = self.c_ents["Varsta"].get()
+            raw_gen = self.gen.get()
+            raw_tb = self.c_ents["Bilirubina T"].get()
+            raw_db = self.c_ents["Bilirubina D"].get()
+            raw_alk = self.c_ents["Fosfataza"].get()
+            raw_alt = self.c_ents["ALT"].get()
+            raw_ast = self.c_ents["AST"].get()
+            raw_tp = self.c_ents["Proteine T"].get()
+            raw_alb = self.c_ents["Albumina"].get()
+            raw_ag = self.c_ents["Raport AG"].get()
+
+            # 2. Validare date folosind modulul utils
+            is_valid, message = validate_patient_data(
+                raw_age, raw_gen, raw_tb, raw_db, raw_alk, 
+                raw_alt, raw_ast, raw_tp, raw_alb, raw_ag
+            )
+
+            if not is_valid:
+                messagebox.showerror("Eroare Validare", message)
+                return
+
+            # 3. Procesare daca datele sunt valide
             split_map = {"80% Train": 0.20, "70% Train": 0.30, "60% Train": 0.40, "50% Train": 0.50}
             sz = split_map[self.split.get()]
-            clin_data = [float(self.c_ents["Varsta"].get()), 1 if self.gen.get()=="Masculin" else 0]
-            for f in self.fields[1:]: clin_data.append(float(self.c_ents[f].get()))
+            
+            clin_data = [float(raw_age), 1 if raw_gen == "Masculin" else 0]
+            # Adaugam restul campurilor deja validate ca float
+            for val in [raw_tb, raw_db, raw_alk, raw_alt, raw_ast, raw_tp, raw_alb, raw_ag]:
+                clin_data.append(float(val))
+
             dp = self.controller.models_data[sz]
             sc = dp['SCALER'].transform(np.array(clin_data).reshape(1, -1))
             res = dp[self.algo.get()].predict(sc)[0]

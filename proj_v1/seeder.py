@@ -1,6 +1,6 @@
 import pandas as pd
 import mysql.connector
-import bcrypt  # Import necesar pentru hashing
+import bcrypt
 
 def run_complete_seeder():
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00225/Indian%20Liver%20Patient%20Dataset%20(ILPD).csv"
